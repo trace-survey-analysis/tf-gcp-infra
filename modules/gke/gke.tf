@@ -3,6 +3,15 @@ resource "google_service_account" "gke_sa" {
   account_id   = "gke-sa-id"
   display_name = "Service Account for GKE"
 }
+resource "google_kms_crypto_key_iam_binding" "gke_kms_binding" {
+  crypto_key_id = var.gke_crypto_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+  members = [
+    "serviceAccount:${google_service_account.gke_sa.email}",
+    "serviceAccount:${var.compute_sa_email}"
+  ]
+}
 
 data "google_compute_zones" "available_zones" {
   region = var.region
@@ -65,11 +74,13 @@ resource "google_container_node_pool" "primary_preemptible_nodes" {
   version    = var.node_version
 
   node_config {
-    preemptible  = true
-    machine_type = var.machine_type #Defaults to e2-medium
-    image_type   = "COS_CONTAINERD"
-    disk_size_gb = 50 #Defaults to 100
-    disk_type    = var.disk_type
+    preemptible       = true
+    machine_type      = var.machine_type #Defaults to e2-medium
+    image_type        = "COS_CONTAINERD"
+    disk_size_gb      = 50 #Defaults to 100
+    disk_type         = var.disk_type
+    service_account   = google_service_account.gke_sa.email
+    boot_disk_kms_key = var.gke_crypto_key_id
 
     # required to enable workload identity on node pool
     workload_metadata_config {
@@ -77,7 +88,7 @@ resource "google_container_node_pool" "primary_preemptible_nodes" {
     }
 
     # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
-    service_account = google_service_account.gke_sa.email
+
     oauth_scopes = [
       "https://www.googleapis.com/auth/logging.write",
       "https://www.googleapis.com/auth/monitoring",
