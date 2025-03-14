@@ -12,6 +12,16 @@ resource "google_kms_crypto_key_iam_binding" "gke_kms_binding" {
     "serviceAccount:${var.compute_sa_email}"
   ]
 }
+resource "google_kms_crypto_key_iam_binding" "sops_kms_binding" {
+  crypto_key_id = var.sops_crypto_key_id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+
+  members = [
+    "serviceAccount:${google_service_account.gke_sa.email}",
+    "serviceAccount:${var.compute_sa_email}",
+    "serviceAccount:${var.bastion_sa_email}"
+  ]
+}
 
 data "google_compute_zones" "available_zones" {
   region = var.region
@@ -20,7 +30,7 @@ data "google_compute_zones" "available_zones" {
 resource "google_container_cluster" "gke_cluster" {
   name           = "gke-cluster-${var.environment}"
   location       = var.region
-  node_locations = slice(data.google_compute_zones.available_zones.names, 0, 2)
+  node_locations = slice(data.google_compute_zones.available_zones.names, 0, 1)
   # logging_service          = "none"
   # monitoring_service       = "none"
 
@@ -67,7 +77,7 @@ resource "google_container_cluster" "gke_cluster" {
 resource "google_container_node_pool" "primary_preemptible_nodes" {
   name           = "node-pool-${var.environment}"
   location       = var.region #Regional
-  node_locations = slice(data.google_compute_zones.available_zones.names, 0, 2)
+  node_locations = slice(data.google_compute_zones.available_zones.names, 0, 3)
   #multizone (first two available zones list)
   cluster    = google_container_cluster.gke_cluster.name
   node_count = 1 #nodes per zone
