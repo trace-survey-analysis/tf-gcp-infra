@@ -79,3 +79,13 @@ variable "key_ring_name" {
   description = "Key Ring Name"
 
 }
+variable "trace_bucket_name" {
+  type        = string
+  description = "Trace Bucket Name"
+}
+
+variable "backups_bucket_name" {
+  type        = string
+  description = "SQL Backups Bucket Name"
+
+}
